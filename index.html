@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stegosaurus Runner</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #f7f7f7;
+            font-family: Arial, sans-serif;
+        }
+        
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        #game {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        
+        #ground {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 20px;
+            background-color: #555;
+        }
+        
+        #stegosaurus {
+            position: absolute;
+            bottom: 20px;
+            left: 50px;
+            width: 60px;
+            height: 40px;
+        }
+        
+        .cactus {
+            position: absolute;
+            bottom: 20px;
+            width: 20px;
+            height: 40px;
+            background-color: #2e8b57;
+        }
+        
+        #score {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 24px;
+            color: #333;
+        }
+        
+        #game-over {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 48px;
+            color: #ff3333;
+            display: none;
+        }
+        
+        #restart {
+            position: absolute;
+            top: 60%;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 10px 20px;
+            font-size: 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            display: none;
+        }
+        
+        #restart:hover {
+            background-color: #45a049;
+        }
+        
+        /* Stegosaurus drawing */
+        .stegosaurus-body {
+            position: absolute;
+            width: 60px;
+            height: 30px;
+            background-color: #5e9e5e;
+            border-radius: 15px;
+        }
+        
+        .stegosaurus-head {
+            position: absolute;
+            left: -10px;
+            top: 10px;
+            width: 15px;
+            height: 15px;
+            background-color: #5e9e5e;
+            border-radius: 50%;
+        }
+        
+        .stegosaurus-leg-front {
+            position: absolute;
+            bottom: -10px;
+            left: 10px;
+            width: 8px;
+            height: 15px;
+            background-color: #4a7c4a;
+        }
+        
+        .stegosaurus-leg-back {
+            position: absolute;
+            bottom: -10px;
+            right: 10px;
+            width: 8px;
+            height: 15px;
+            background-color: #4a7c4a;
+        }
+        
+        .stegosaurus-tail {
+            position: absolute;
+            right: -15px;
+            top: 5px;
+            width: 20px;
+            height: 5px;
+            background-color: #5e9e5e;
+            transform: rotate(-20deg);
+        }
+        
+        .stegosaurus-plate {
+            position: absolute;
+            width: 8px;
+            height: 20px;
+            background-color: #4a7c4a;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div id="game">
+            <div id="ground"></div>
+            <div id="stegosaurus">
+                <div class="stegosaurus-body"></div>
+                <div class="stegosaurus-head"></div>
+                <div class="stegosaurus-leg-front"></div>
+                <div class="stegosaurus-leg-back"></div>
+                <div class="stegosaurus-tail"></div>
+                <!-- Plates on the back -->
+                <div class="stegosaurus-plate" style="left: 10px; top: -15px;"></div>
+                <div class="stegosaurus-plate" style="left: 20px; top: -18px;"></div>
+                <div class="stegosaurus-plate" style="left: 30px; top: -15px;"></div>
+                <div class="stegosaurus-plate" style="left: 40px; top: -12px;"></div>
+            </div>
+            <div id="score">0</div>
+            <div id="game-over">Game Over!</div>
+            <button id="restart">Restart</button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const stegosaurus = document.getElementById('stegosaurus');
+            const gameContainer = document.getElementById('game');
+            const scoreElement = document.getElementById('score');
+            const gameOverElement = document.getElementById('game-over');
+            const restartButton = document.getElementById('restart');
+            
+            let isJumping = false;
+            let isGameOver = false;
+            let score = 0;
+            let speed = 5;
+            let gameSpeed = 10;
+            let cacti = [];
+            let animationId;
+            
+            // Jump function
+            function jump() {
+                if (isJumping || isGameOver) return;
+                
+                isJumping = true;
+                let jumpHeight = 0;
+                const jumpUp = setInterval(() => {
+                    jumpHeight += 5;
+                    stegosaurus.style.bottom = (20 + jumpHeight) + 'px';
+                    
+                    if (jumpHeight >= 150) {
+                        clearInterval(jumpUp);
+                        const jumpDown = setInterval(() => {
+                            jumpHeight -= 5;
+                            stegosaurus.style.bottom = (20 + jumpHeight) + 'px';
+                            
+                            if (jumpHeight <= 0) {
+                                clearInterval(jumpDown);
+                                stegosaurus.style.bottom = '20px';
+                                isJumping = false;
+                            }
+                        }, 20);
+                    }
+                }, 20);
+            }
+            
+            // Create cactus
+            function createCactus() {
+                if (isGameOver) return;
+                
+                const cactus = document.createElement('div');
+                cactus.className = 'cactus';
+                cactus.style.left = gameContainer.offsetWidth + 'px';
+                gameContainer.appendChild(cactus);
+                cacti.push(cactus);
+                
+                // Random interval for next cactus
+                const randomTime = Math.random() * 2000 + 1000;
+                setTimeout(createCactus, randomTime);
+            }
+            
+            // Move cacti
+            function moveCacti() {
+                for (let i = 0; i < cacti.length; i++) {
+                    const cactus = cacti[i];
+                    const cactusLeft = parseInt(cactus.style.left);
+                    
+                    if (cactusLeft < -20) {
+                        gameContainer.removeChild(cactus);
+                        cacti.splice(i, 1);
+                        i--;
+                        score++;
+                        scoreElement.textContent = score;
+                        
+                        // Increase speed every 10 points
+                        if (score % 10 === 0) {
+                            speed += 0.5;
+                        }
+                    } else {
+                        cactus.style.left = (cactusLeft - speed) + 'px';
+                        
+                        // Check collision
+                        if (
+                            cactusLeft < 110 && 
+                            cactusLeft > 50 && 
+                            !isJumping
+                        ) {
+                            gameOver();
+                        }
+                    }
+                }
+            }
+            
+            // Game over
+            function gameOver() {
+                isGameOver = true;
+                gameOverElement.style.display = 'block';
+                restartButton.style.display = 'block';
+                cancelAnimationFrame(animationId);
+            }
+            
+            // Restart game
+            function restartGame() {
+                // Remove all cacti
+                cacti.forEach(cactus => {
+                    gameContainer.removeChild(cactus);
+                });
+                cacti = [];
+                
+                // Reset variables
+                isJumping = false;
+                isGameOver = false;
+                score = 0;
+                speed = 5;
+                
+                // Reset display
+                scoreElement.textContent = '0';
+                gameOverElement.style.display = 'none';
+                restartButton.style.display = 'none';
+                
+                // Start game again
+                startGame();
+            }
+            
+            // Game loop
+            function gameLoop() {
+                if (!isGameOver) {
+                    moveCacti();
+                    animationId = requestAnimationFrame(gameLoop);
+                }
+            }
+            
+            // Start game
+            function startGame() {
+                createCactus();
+                gameLoop();
+            }
+            
+            // Event listeners
+            document.addEventListener('keydown', (e) => {
+                if (e.code === 'Space' || e.key === 'ArrowUp') {
+                    jump();
+                }
+            });
+            
+            gameContainer.addEventListener('click', () => {
+                jump();
+            });
+            
+            restartButton.addEventListener('click', restartGame);
+            
+            // Start the game
+            startGame();
+        });
+    </script>
+</body>
+</html>
